@@ -494,7 +494,7 @@ const App: React.FC = () => {
         
         {/* Sidebar */}
         <div className={`
-          fixed top-0 left-0 h-full w-64 bg-[#2A2738] border-r border-[#00FFF7]/20 z-50
+          fixed top-0 left-0 h-full w-72 bg-[#2A2738] border-r border-[#00FFF7]/20 z-50 flex flex-col justify-between
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:static lg:z-auto
@@ -508,7 +508,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="p-4 space-y-2">
+          <nav className="p-4 space-y-4 flex-1 overflow-auto">
             {menuItems.map((item) => (
               <button
                 key={item.page}
@@ -531,17 +531,15 @@ const App: React.FC = () => {
           </nav>
 
           {/* User Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#00FFF7]/10">
+          <div className="p-4 border-t border-[#00FFF7]/10">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1F1B2E]">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00FFF7] to-[#8C1AFF] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#00FFF7] to-[#8C1AFF] flex items-center justify-center">
                 <span className="text-white text-sm font-bold">
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">
-                  {user?.email || 'Utilisateur'}
-                </p>
+                <p className="text-white text-sm font-medium truncate">{user?.email || 'Utilisateur'}</p>
                 <p className="text-gray-400 text-xs capitalize">{userType}</p>
               </div>
             </div>
@@ -586,10 +584,18 @@ const App: React.FC = () => {
           </button>
           
           <button
-            onClick={logout}
+            onClick={async () => {
+              try {
+                await logout();
+              } finally {
+                // Clear ephemeral data and go to home
+                try { localStorage.clear(); sessionStorage.clear(); } catch { console.warn('Could not clear storage'); }
+                setCurrentPage('home');
+              }
+            }}
             className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#FF6B6B]/10 rounded-lg transition-all duration-200"
           >
-            Déconnexion
+            D connexion
           </button>
         </div>
       </div>
@@ -829,57 +835,169 @@ const App: React.FC = () => {
 
   const renderDashboard = () => (
     <div className="p-6 space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 card-hover-effect">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-[#00FFF7]/10 rounded-xl flex items-center justify-center">
-              <Users className="text-[#00FFF7]" size={24} />
-            </div>
-            <span className="text-2xl font-bold text-white">{queues.reduce((acc, q) => acc + q.clients.length, 0)}</span>
-          </div>
-          <h3 className="text-gray-300 text-sm font-medium">Clients Actifs</h3>
-          <p className="text-[#00FFF7] text-xs mt-1">Bas  sur les files activ es</p>
-        </div>
+      {/* Different dashboards for owner and client */}
+      {userType === 'owner' ? (
+        (() => {
+          // Owner view: metrics for selected organization or first owned org
+          const org = selectedOrganization && selectedOrganization.ownerId === user?.uid
+            ? selectedOrganization
+            : organizations.find(o => o.ownerId === user?.uid) || selectedOrganization;
+          const orgQueues = org ? queues.filter(q => q.organizationId === org.id) : [];
+          const clientsActive = orgQueues.reduce((acc, q) => acc + q.clients.length, 0);
+          const avgWait = Math.round(orgQueues.reduce((acc, q) => acc + q.estimatedWaitTime, 0) / Math.max(orgQueues.length, 1));
+          const totalServed = orgQueues.reduce((acc, q) => acc + q.totalServed, 0);
 
-        <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#8C1AFF]/20 card-hover-effect">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-[#8C1AFF]/10 rounded-xl flex items-center justify-center">
-              <Clock className="text-[#8C1AFF]" size={24} />
-            </div>
-            <span className="text-2xl font-bold text-white">{Math.round(queues.reduce((total, queue) => total + queue.estimatedWaitTime, 0) / Math.max(queues.length, 1))}m</span>
-          </div>
-          <h3 className="text-gray-300 text-sm font-medium">Temps Moyen</h3>
-          <p className="text-green-400 text-xs mt-1">-2m depuis hier</p>
-        </div>
+          return (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">Dashboard Pro — {org ? org.name : 'Organisation'}</h1>
+                  <p className="text-gray-400">Vue propriétaire: métriques pour votre organisation</p>
+                </div>
+                <div>
+                  <Button onClick={() => setCurrentPage('queues')}>Gérer mes files</Button>
+                </div>
+              </div>
 
-        <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#FF6B6B]/20 card-hover-effect">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-[#FF6B6B]/10 rounded-xl flex items-center justify-center">
-              <TrendingUp className="text-[#FF6B6B]" size={24} />
-            </div>
-            <span className="text-2xl font-bold text-white">94%</span>
-          </div>
-          <h3 className="text-gray-300 text-sm font-medium">Satisfaction</h3>
-          <p className="text-green-400 text-xs mt-1">+3% ce mois</p>
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#00FFF7]/10 rounded-xl flex items-center justify-center">
+                      <Users className="text-[#00FFF7]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{clientsActive}</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Clients Actifs</h3>
+                  <p className="text-[#00FFF7] text-xs mt-1">Sur vos files</p>
+                </div>
 
-        <div className="bg-[#2A2738] p-6 rounded-2xl border border-yellow-400/20 card-hover-effect">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-yellow-400/10 rounded-xl flex items-center justify-center">
-              <UserCheck className="text-yellow-400" size={24} />
-            </div>
-            <span className="text-2xl font-bold text-white">{queues.reduce((acc, q) => acc + q.totalServed, 0)}</span>
-          </div>
-          <h3 className="text-gray-300 text-sm font-medium">Clients Traités</h3>
-          <p className="text-green-400 text-xs mt-1">+18 aujourd'hui</p>
-        </div>
-      </div>
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#8C1AFF]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#8C1AFF]/10 rounded-xl flex items-center justify-center">
+                      <Clock className="text-[#8C1AFF]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{avgWait}m</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Temps Moyen</h3>
+                  <p className="text-green-400 text-xs mt-1">Basé sur vos files</p>
+                </div>
 
-      {/* Quick Actions */}
-      <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20">
-        <h2 className="text-xl font-bold text-white mb-4">Actions Rapides</h2>
-      </div>
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#FF6B6B]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#FF6B6B]/10 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="text-[#FF6B6B]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">94%</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Satisfaction</h3>
+                  <p className="text-green-400 text-xs mt-1">+3% ce mois</p>
+                </div>
+
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-yellow-400/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-yellow-400/10 rounded-xl flex items-center justify-center">
+                      <UserCheck className="text-yellow-400" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{totalServed}</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Clients Traités</h3>
+                  <p className="text-green-400 text-xs mt-1">Depuis le lancement</p>
+                </div>
+              </div>
+
+              <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20">
+                <h2 className="text-xl font-bold text-white mb-4">Actions Rapides</h2>
+                <div className="flex gap-3">
+                  <Button onClick={() => setCurrentPage('services')}>Gérer Services</Button>
+                  <Button onClick={() => setCurrentPage('queues')}>Voir Files</Button>
+                </div>
+              </div>
+            </>
+          );
+        })()
+      ) : (
+        (() => {
+          // Client view: focused on user's queues and personal position
+          const myQueues = user ? queues.filter(q => q.clients.some(c => c.userId === user.uid)) : [];
+          const myQueuesCount = myQueues.length;
+          const personsAhead = myQueues.reduce((acc, q) => {
+            const me = q.clients.find(c => c.userId === user?.uid);
+            if (!me) return acc;
+            return acc + Math.max(0, me.position - 1);
+          }, 0);
+          const avgMyWait = myQueues.length ? Math.round(myQueues.reduce((acc, q) => acc + q.estimatedWaitTime, 0) / myQueues.length) : 0;
+          const totalServedGlobal = queues.reduce((acc, q) => acc + q.totalServed, 0);
+
+          return (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">Mon Dashboard</h1>
+                  <p className="text-gray-400">Vue client: suivez vos files et positions</p>
+                </div>
+                <div>
+                  <Button onClick={() => setCurrentPage('waiting')}>Voir mes files</Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#00FFF7]/10 rounded-xl flex items-center justify-center">
+                      <Users className="text-[#00FFF7]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{myQueuesCount}</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Mes Files</h3>
+                  <p className="text-[#00FFF7] text-xs mt-1">Files où vous êtes inscrit</p>
+                </div>
+
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#8C1AFF]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#8C1AFF]/10 rounded-xl flex items-center justify-center">
+                      <Clock className="text-[#8C1AFF]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{avgMyWait}m</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Mon Temps Moyen</h3>
+                  <p className="text-green-400 text-xs mt-1">Est. pour vos files</p>
+                </div>
+
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#FF6B6B]/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-[#FF6B6B]/10 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="text-[#FF6B6B]" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">94%</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Satisfaction</h3>
+                  <p className="text-green-400 text-xs mt-1">Global</p>
+                </div>
+
+                <div className="bg-[#2A2738] p-6 rounded-2xl border border-yellow-400/20 card-hover-effect">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-yellow-400/10 rounded-xl flex items-center justify-center">
+                      <UserCheck className="text-yellow-400" size={24} />
+                    </div>
+                    <span className="text-2xl font-bold text-white">{totalServedGlobal}</span>
+                  </div>
+                  <h3 className="text-gray-300 text-sm font-medium">Clients Traités (global)</h3>
+                  <p className="text-green-400 text-xs mt-1">Depuis le lancement</p>
+                </div>
+              </div>
+
+              {/* Quick personal info */}
+              <div className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20">
+                <h2 className="text-lg font-semibold text-white mb-3">Résumé personnel</h2>
+                <p className="text-gray-300">Vous êtes inscrit dans <strong>{myQueuesCount}</strong> file(s). Personnes devant vous: <strong>{personsAhead}</strong>.</p>
+                <div className="mt-4">
+                  <Button onClick={() => setCurrentPage('waiting')}>Voir mes files</Button>
+                </div>
+              </div>
+            </>
+          );
+        })()
+      )}
     </div>
   );
 
