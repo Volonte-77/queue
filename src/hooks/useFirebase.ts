@@ -66,6 +66,8 @@ export interface QueueClient {
   userPhone: string;
   position: number;
   joinedAt: Timestamp;
+  calledAt?: Timestamp;
+  servedAt?: Timestamp;
   estimatedTime: string;
   status: 'waiting' | 'called' | 'served' | 'cancelled';
 }
@@ -317,14 +319,14 @@ export const useQueues = (organizationId?: string) => {
       const mapped = clients.map((client) => {
         if (client.status === 'called') {
           servedCount += 1;
-          return { ...client, status: 'served' as const };
+          return { ...client, status: 'served' as const, servedAt: Timestamp.now() };
         }
         return client;
       });
 
       // If the first client is waiting, mark them as called
       if (mapped.length > 0 && mapped[0].status === 'waiting') {
-        mapped[0] = { ...mapped[0], status: 'called' as const };
+        mapped[0] = { ...mapped[0], status: 'called' as const, calledAt: Timestamp.now() };
       }
 
       // Remove served clients
@@ -362,8 +364,11 @@ export const useQueues = (organizationId?: string) => {
 
       const [removed] = clients.splice(index, 1);
 
-      // If the removed client was 'called', consider them served for counters
+      // If the removed client was 'called', consider them served for counters and mark servedAt
       const servedIncrement = removed.status === 'called' ? 1 : 0;
+      if (servedIncrement === 1) {
+        removed.servedAt = Timestamp.now();
+      }
 
       const reordered = clients.map((client, idx) => ({ ...client, position: idx + 1 }));
 
