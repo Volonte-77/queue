@@ -1154,22 +1154,22 @@ const App: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
               {services.map((service) => (
-                <div key={service.id} className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 card-hover-effect">
+                <div key={service.id} className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 card-hover-effect min-w-0 overflow-hidden">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                         service.isActive ? 'bg-green-400/10' : 'bg-gray-400/10'
                       }`}>
                         <Settings className={service.isActive ? 'text-green-400' : 'text-gray-400'} size={20} />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white">{service.name}</h3>
-                        <p className="text-sm text-gray-400">{service.description}</p>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-white truncate">{service.name}</h3>
+                        <p className="text-sm text-gray-400 line-clamp-2">{service.description}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
                         onClick={() => openEditServiceModal(service)}
                         variant="ghost"
@@ -1246,7 +1246,7 @@ const App: React.FC = () => {
               <p className="text-sm text-gray-500">Créez d'abord des services pour gérer les files d'attente.</p>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
               {services
                 .filter(service => service.isActive)
                 .map(service => {
@@ -1304,24 +1304,24 @@ const App: React.FC = () => {
                   }
 
                   return (
-                    <div key={service.id} className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 flex flex-col h-auto">
+                    <div key={service.id} className="bg-[#2A2738] p-6 rounded-2xl border border-[#00FFF7]/20 flex flex-col h-auto min-w-0 overflow-hidden">
                       <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
                             queue.status === 'open' ? 'bg-green-400/10' :
                             queue.status === 'paused' ? 'bg-yellow-400/10' : 'bg-red-400/10'
                           }`}>
                             {getStatusIcon(queue.status)}
                           </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-white">{service.name}</h3>
-                            <p className="text-gray-400">
+                          <div className="min-w-0">
+                            <h3 className="text-xl font-bold text-white truncate">{service.name}</h3>
+                            <p className="text-gray-400 line-clamp-2">
                               {queue.clients.length} clients • {queue.estimatedWaitTime}min d'attente
                             </p>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-shrink-0">
                           <Button
                             onClick={() => handleToggleQueueStatus(queue.id, queue.status)}
                             variant={queue.status === 'open' ? 'secondary' : 'primary'}
@@ -1394,7 +1394,7 @@ const App: React.FC = () => {
                                        client.status === 'served' ? 'Servi' : 'Annul\u00e9'}
                                     </p>
                                   </div>
-                                  <div>
+                                  <div className="flex-shrink-0">
                                     <Button size="sm" onClick={() => speak(`${client.userName}, veuillez vous rapprocher.`)}>
                                       <Play size={14} />
                                       Prononcer
